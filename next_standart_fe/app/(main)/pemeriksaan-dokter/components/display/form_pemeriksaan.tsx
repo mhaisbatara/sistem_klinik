@@ -180,9 +180,10 @@ const FormPemeriksaan = ({ state, setState, toast, getData, openPemeriksaan }: C
     };
 
     // --- Lab Handlers ---
+    const [jenisPemeriksaan, setJenisPemeriksaan] = useState('');
     const handleAddLab = async () => {
-        if (!k || !selectedTarif) {
-            showError(toast, 'Pilih tarif lab terlebih dahulu');
+        if (!k || !jenisPemeriksaan.trim()) {
+            showError(toast, 'Nama/jenis pemeriksaan lab wajib diisi');
             return;
         }
         setLoadLabAdd(true);
@@ -190,10 +191,10 @@ const FormPemeriksaan = ({ state, setState, toast, getData, openPemeriksaan }: C
             const res = await postData(apiEndpointLabCreate, {
                 kode_kunjungan: k.kode_kunjungan,
                 no_sip: k.no_sip,
-                kode_tarif: selectedTarif,
+                jenis_pemeriksaan: jenisPemeriksaan,
             });
             showSuccess(toast, res.data?.message || 'Permintaan lab berhasil ditambahkan');
-            setSelectedTarif('');
+            setJenisPemeriksaan('');
             if (openPemeriksaan) await openPemeriksaan(k);
         } catch (error: any) {
             showError(toast, error?.response?.data?.message || 'Gagal menambah lab');
@@ -530,16 +531,11 @@ const FormPemeriksaan = ({ state, setState, toast, getData, openPemeriksaan }: C
                                 <p className="font-bold text-sm mb-2 text-blue-700">+ Order Pemeriksaan Lab</p>
                                 <div className="grid p-fluid">
                                     <div className="col-12 md:col-9">
-                                        <label className="text-xs font-semibold">Pilih Pemeriksaan Lab (Master Tarif)</label>
-                                        <Dropdown
-                                            value={selectedTarif}
-                                            options={state.tarifOptions.map((t) => ({
-                                                label: `${t.nama_layanan} — ${formatRupiah(t.tarif)}`,
-                                                value: t.kode_tarif,
-                                            }))}
-                                            onChange={(e) => setSelectedTarif(e.value)}
-                                            placeholder="— Pilih Pemeriksaan Lab —"
-                                            filter
+                                        <label className="text-xs font-semibold">Jenis / Nama Pemeriksaan Lab</label>
+                                        <InputText
+                                            value={jenisPemeriksaan}
+                                            onChange={(e) => setJenisPemeriksaan(e.target.value)}
+                                            placeholder="cth. Darah Lengkap, Urine Lengkap, Gula Darah Sewaktu, Widal"
                                         />
                                     </div>
                                     <div className="col-12 md:col-3 flex align-items-end">
@@ -556,7 +552,6 @@ const FormPemeriksaan = ({ state, setState, toast, getData, openPemeriksaan }: C
                             <DataTable value={state.vaLab} className="text-sm" responsiveLayout="scroll" size="small">
                                 <Column field="kode_permintaan" header="Kode" />
                                 <Column field="jenis_pemeriksaan" header="Jenis Pemeriksaan" />
-                                <Column field="tarif" header="Tarif" body={(r: PermintaanLabItem) => formatRupiah(r.tarif)} />
                                 <Column field="status" header="Status"
                                     body={(r: PermintaanLabItem) => (
                                         <Tag value={r.status} severity={r.status === 'selesai' ? 'success' : r.status === 'diproses' ? 'warning' : 'info'} />

@@ -1,7 +1,7 @@
 /**
  * @project Sistem Klinik
  * @file pelayanan_medis/resep_create.js
- * @description Endpoint tambah item resep. Jika resep sudah ada untuk kunjungan, tambah detail saja.
+ * @description Endpoint tambah item resep + otomatis menambahkan item obat ke trx_detail_tagihan & update total_tagihan
  */
 
 import express from "express";
@@ -51,15 +51,22 @@ router.post("/", async (req, res) => {
       });
     }
 
-    const tanggal = new Date().toISOString().slice(0, 10);
+    const getLocalDateStr = (d = new Date()) => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
+
+    const todayStr = getLocalDateStr(new Date());
     let oResep = await DB("trx_resep").where("kode_kunjungan", oPayload.kode_kunjungan).first();
 
     await DB.transaction(async (trx) => {
-      // Buat resep baru jika belum ada
+      // 1. Buat resep header jika belum ada
       if (!oResep) {
         const countResep = await trx("trx_resep").count("id as c").first();
         const seqResep   = (parseInt(countResep.c || 0) + 1).toString().padStart(4, "0");
-        const dateTag    = tanggal.replace(/-/g, "");
+        const dateTag    = todayStr.replace(/-/g, "");
         const resepId    = `RSP${seqResep}`;
         const kodeResep  = `RSP-${dateTag}-${seqResep}`;
 
@@ -68,13 +75,13 @@ router.post("/", async (req, res) => {
           kode_resep:  kodeResep,
           kode_kunjungan: oPayload.kode_kunjungan,
           no_sip:      oPayload.no_sip || null,
-          tanggal_resep: tanggal,
+          tanggal_resep: todayStr,
           status_dispensing: "menunggu",
         };
         await trx("trx_resep").insert(oResep);
       }
 
-      // Insert detail resep
+      // 2. Insert detail resep
       const countDetail = await trx("trx_resep_detail").count("id as c").first();
       const seqDetail   = (parseInt(countDetail.c || 0) + 1).toString().padStart(4, "0");
       const detailId    = `RSD${seqDetail}`;
@@ -87,11 +94,69 @@ router.post("/", async (req, res) => {
         jumlah:      oPayload.jumlah,
         aturan_pakai: oPayload.aturan_pakai || null,
       });
+
+      // 3. Sync ke trx_tagihan & trx_detail_tagihan (jenis_item = 'obat')
+      let oTagihan = await trx("trx_tagihan")
+        .where("kode_kunjungan", oPayload.kode_kunjungan)
+        .first();
+
+      if (!oTagihan) {
+        const oKunjungan = await trx("trx_kunjungan")
+          .where("kode_kunjungan", oPayload.kode_kunjungan)
+          .first();
+
+        const countTagihan = await trx("trx_tagihan").count("id as c").first();
+        const seqTag       = String(parseInt(countTagihan.c || 0) + 1).padStart(4, "0");
+        const dateTag      = todayStr.replace(/-/g, "");
+        const tagihanId    = `TGH${dateTag}${seqTag}`;
+        const kodeTagihan  = `TGH-${dateTag}-${seqTag}`;
+
+        oTagihan = {
+          id: tagihanId,
+          kode_tagihan: kodeTagihan,
+          kode_kunjungan: oPayload.kode_kunjungan,
+          no_rm: oKunjungan?.no_rm || null,
+          kode_penjamin: oKunjungan?.kode_penjamin || "PJM01",
+          total_tagihan: 0,
+          status_pembayaran: "belum_bayar",
+          tanggal: todayStr,
+        };
+        await trx("trx_tagihan").insert(oTagihan);
+      }
+
+      const qty = parseInt(oPayload.jumlah || 1);
+      const hargaSatuan = parseFloat(oObat.harga_jual || 0);
+      const subtotal = qty * hargaSatuan;
+
+      const countDtlTag = await trx("trx_detail_tagihan").count("id as c").first();
+      const seqDtlTag   = String(parseInt(countDtlTag.c || 0) + 1).padStart(4, "0");
+      const dtlTagId    = `DTL${todayStr.replace(/-/g, "")}${seqDtlTag}`;
+
+      await trx("trx_detail_tagihan").insert({
+        id: dtlTagId,
+        kode_tagihan: oTagihan.kode_tagihan,
+        jenis_item: "obat",
+        nama_item: oObat.nama_obat,
+        qty: qty,
+        harga_satuan: hargaSatuan,
+        subtotal: subtotal,
+      });
+
+      // Recalculate total_tagihan
+      const sumRes = await trx("trx_detail_tagihan")
+        .where("kode_tagihan", oTagihan.kode_tagihan)
+        .sum("subtotal as total")
+        .first();
+
+      const newTotal = parseFloat(sumRes?.total || 0);
+      await trx("trx_tagihan")
+        .where("kode_tagihan", oTagihan.kode_tagihan)
+        .update({ total_tagihan: newTotal });
     });
 
     return res.status(200).json({
       status: status.SUKSES,
-      message: `Obat "${oObat.nama_obat}" berhasil ditambahkan ke resep`,
+      message: `Obat "${oObat.nama_obat}" berhasil ditambahkan ke resep & tagihan`,
       datetime: formatDateSystem(),
     });
   } catch (error) {

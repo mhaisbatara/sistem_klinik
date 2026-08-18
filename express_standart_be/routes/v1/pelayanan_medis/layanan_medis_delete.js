@@ -1,7 +1,7 @@
 /**
  * @project Sistem Klinik
  * @file pelayanan_medis/layanan_medis_delete.js
- * @description Endpoint hapus satu layanan medis
+ * @description Endpoint hapus layanan medis dari trx_detail_tagihan & recalculate total_tagihan
  */
 
 import express from "express";
@@ -26,7 +26,7 @@ router.post("/", async (req, res) => {
       });
     }
 
-    const existing = await DB("trx_layanan_medis").where("id", oPayload.id).first();
+    const existing = await DB("trx_detail_tagihan").where("id", oPayload.id).first();
     if (!existing) {
       return res.status(404).json({
         status: status.NOT_FOUND,
@@ -35,7 +35,21 @@ router.post("/", async (req, res) => {
       });
     }
 
-    await DB("trx_layanan_medis").where("id", oPayload.id).delete();
+    await DB.transaction(async (trx) => {
+      await trx("trx_detail_tagihan").where("id", oPayload.id).delete();
+
+      // Recalculate total_tagihan
+      const sumRes = await trx("trx_detail_tagihan")
+        .where("kode_tagihan", existing.kode_tagihan)
+        .sum("subtotal as total")
+        .first();
+
+      const newTotal = parseFloat(sumRes?.total || 0);
+
+      await trx("trx_tagihan")
+        .where("kode_tagihan", existing.kode_tagihan)
+        .update({ total_tagihan: newTotal });
+    });
 
     return res.status(200).json({
       status: status.SUKSES,

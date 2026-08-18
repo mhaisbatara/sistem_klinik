@@ -36,9 +36,11 @@ router.post("/", async (req, res) => {
       .select(
         "k.kode_kunjungan", "k.kode_antrian", "k.no_rm", "k.kode_poli",
         "pol.nama_poli", "k.no_sip", "d.nama_dokter", "d.spesialisasi",
-        "k.kode_penjamin", "pj.nama_penjamin", "k.tanggal_kunjungan",
+        "k.kode_penjamin", "pj.nama_penjamin",
+        DB.raw("DATE_FORMAT(k.tanggal_kunjungan, '%Y-%m-%d') as tanggal_kunjungan"),
         "k.jam_masuk", "k.jam_selesai", "k.keluhan_awal", "k.status_kunjungan",
-        "p.nik", "p.nama_pasien", "p.jenis_kelamin", "p.tanggal_lahir",
+        "p.nik", "p.nama_pasien", "p.jenis_kelamin",
+        DB.raw("DATE_FORMAT(p.tanggal_lahir, '%Y-%m-%d') as tanggal_lahir"),
         "p.no_hp", "p.golongan_darah", "p.agama", "p.detail_alamat"
       )
       .where("k.kode_kunjungan", kodeKunj)
@@ -52,28 +54,40 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // Layanan medis
-    const vaLayanan = await DB("trx_layanan_medis")
-      .where("kode_kunjungan", kodeKunj)
-      .orderBy("created_at", "asc");
+    // Layanan medis (dari trx_detail_tagihan)
+    const vaLayanan = await DB("trx_detail_tagihan as dt")
+      .join("trx_tagihan as t", "dt.kode_tagihan", "t.kode_tagihan")
+      .select(
+        "dt.id",
+        "dt.kode_tagihan",
+        "dt.jenis_item as jenis_layanan",
+        "dt.nama_item as nama_layanan",
+        "dt.qty",
+        "dt.harga_satuan as harga",
+        "dt.subtotal"
+      )
+      .where("t.kode_kunjungan", kodeKunj)
+      .whereIn("dt.jenis_item", ["konsultasi", "tindakan"]);
 
     // Permintaan lab
-    const vaLab = await DB("trx_permintaan_lab as pl")
-      .leftJoin("mst_tarif_layanan as tl", "pl.kode_tarif", "tl.kode_tarif")
+    const vaLab = await DB("trx_permintaan_lab")
       .select(
-        "pl.id", "pl.kode_permintaan", "pl.kode_kunjungan", "pl.no_sip",
-        "pl.jenis_pemeriksaan", "pl.kode_tarif", "tl.tarif",
-        "pl.tanggal_permintaan", "pl.status"
+        "id", "kode_permintaan", "kode_kunjungan", "no_sip",
+        "jenis_pemeriksaan",
+        DB.raw("DATE_FORMAT(tanggal_permintaan, '%Y-%m-%d') as tanggal_permintaan"),
+        "status"
       )
-      .where("pl.kode_kunjungan", kodeKunj)
-      .orderBy("pl.tanggal_permintaan", "asc");
+      .where("kode_kunjungan", kodeKunj)
+      .orderBy("tanggal_permintaan", "asc");
 
     // Resep + detail obat
     const vaResep = await DB("trx_resep as r")
       .leftJoin("trx_resep_detail as rd", "r.kode_resep", "rd.kode_resep")
       .leftJoin("mst_obat as mo",         "rd.kode_obat", "mo.kode_obat")
       .select(
-        "r.id as resep_id", "r.kode_resep", "r.tanggal_resep", "r.catatan",
+        "r.id as resep_id", "r.kode_resep",
+        DB.raw("DATE_FORMAT(r.tanggal_resep, '%Y-%m-%d') as tanggal_resep"),
+        "r.catatan",
         "r.status_dispensing", "rd.id as detail_id", "rd.kode_obat",
         "mo.nama_obat", "mo.satuan", "mo.harga_jual",
         "rd.dosis", "rd.jumlah", "rd.aturan_pakai"

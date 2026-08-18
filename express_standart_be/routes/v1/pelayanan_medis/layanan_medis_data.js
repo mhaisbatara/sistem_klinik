@@ -1,7 +1,7 @@
 /**
  * @project Sistem Klinik
  * @file pelayanan_medis/layanan_medis_data.js
- * @description Endpoint list layanan medis by kode_kunjungan
+ * @description Endpoint list layanan medis (konsultasi & tindakan) dari trx_detail_tagihan
  */
 
 import express from "express";
@@ -27,9 +27,20 @@ router.post("/", async (req, res) => {
       });
     }
 
-    const vaData = await DB("trx_layanan_medis")
-      .where("kode_kunjungan", kodeKunj)
-      .orderBy("created_at", "asc");
+    const vaData = await DB("trx_detail_tagihan as dt")
+      .join("trx_tagihan as t", "dt.kode_tagihan", "t.kode_tagihan")
+      .select(
+        "dt.id",
+        "dt.kode_tagihan",
+        "t.kode_kunjungan",
+        "dt.jenis_item as jenis_layanan",
+        "dt.nama_item as nama_layanan",
+        "dt.qty",
+        "dt.harga_satuan as harga",
+        "dt.subtotal"
+      )
+      .where("t.kode_kunjungan", kodeKunj)
+      .whereIn("dt.jenis_item", ["konsultasi", "tindakan"]);
 
     return res.status(200).json({
       status: status.SUKSES,

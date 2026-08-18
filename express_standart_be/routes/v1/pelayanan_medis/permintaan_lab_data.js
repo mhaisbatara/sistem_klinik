@@ -1,7 +1,7 @@
 /**
  * @project Sistem Klinik
  * @file pelayanan_medis/permintaan_lab_data.js
- * @description List permintaan lab by kunjungan + list master tarif lab
+ * @description List permintaan lab by kunjungan dari trx_permintaan_lab
  */
 
 import express from "express";
@@ -19,31 +19,27 @@ router.post("/", async (req, res) => {
   const kodeKunj = oPayload.kode_kunjungan || "";
 
   try {
-    // Permintaan lab untuk kunjungan ini
     let vaLab = [];
     if (kodeKunj) {
-      vaLab = await DB("trx_permintaan_lab as pl")
-        .leftJoin("mst_tarif_layanan as tl", "pl.kode_tarif", "tl.kode_tarif")
+      vaLab = await DB("trx_permintaan_lab")
         .select(
-          "pl.id", "pl.kode_permintaan", "pl.kode_kunjungan", "pl.no_sip",
-          "pl.jenis_pemeriksaan", "pl.kode_tarif", "tl.tarif", "tl.nama_layanan as nama_tarif",
-          "pl.tanggal_permintaan", "pl.status"
+          "id",
+          "kode_permintaan",
+          "kode_kunjungan",
+          "no_sip",
+          "jenis_pemeriksaan",
+          "tanggal_permintaan",
+          "status"
         )
-        .where("pl.kode_kunjungan", kodeKunj)
-        .orderBy("pl.tanggal_permintaan", "asc");
+        .where("kode_kunjungan", kodeKunj)
+        .orderBy("tanggal_permintaan", "asc");
     }
-
-    // Semua master tarif lab (untuk dropdown)
-    const vaTarif = await DB("mst_tarif_layanan")
-      .where("is_active", 1)
-      .orderBy("nama_layanan", "asc");
 
     return res.status(200).json({
       status: status.SUKSES,
       message: "Data permintaan lab berhasil diambil",
       datetime: formatDateSystem(),
       data: vaLab,
-      tarif_options: vaTarif,
     });
   } catch (error) {
     const oResult = {

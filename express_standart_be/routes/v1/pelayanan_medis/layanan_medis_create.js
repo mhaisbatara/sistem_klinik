@@ -1,7 +1,7 @@
 /**
  * @project Sistem Klinik
  * @file pelayanan_medis/layanan_medis_create.js
- * @description Endpoint tambah layanan medis (konsultasi/tindakan)
+ * @description Endpoint tambah layanan medis (konsultasi/tindakan) langsung ke trx_detail_tagihan & auto-update trx_tagihan
  */
 
 import express from "express";
@@ -22,12 +22,10 @@ router.post("/", async (req, res) => {
     const cValidation = await validatePayload(
       {
         kode_kunjungan: Joi.string().required().label("Kode Kunjungan"),
-        no_sip:         Joi.string().allow("", null).optional().label("No. SIP Dokter"),
         jenis_layanan:  Joi.string().valid("konsultasi", "tindakan").required().label("Jenis Layanan"),
         nama_layanan:   Joi.string().required().label("Nama Layanan"),
         qty:            Joi.number().min(1).default(1).label("Qty"),
         harga:          Joi.number().min(0).required().label("Harga"),
-        keterangan:     Joi.string().allow("", null).optional().label("Keterangan"),
       },
       {
         "any.required":  "{#label} wajib diisi",
@@ -46,32 +44,87 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // Auto-generate ID & kode_layanan
-    const countRes = await DB("trx_layanan_medis").count("id as c").first();
-    const nextSeq  = (parseInt(countRes.c || 0) + 1).toString().padStart(4, "0");
-    const id         = `LYN${nextSeq}`;
-    const dateTag    = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-    const kode_layanan = `LYN-${dateTag}-${nextSeq}`;
+    const qty = parseInt(oPayload.qty || 1);
+    const hargaSatuan = parseFloat(oPayload.harga || 0);
+    const subtotal = qty * hargaSatuan;
 
-    const oData = {
-      id,
-      kode_layanan,
-      kode_kunjungan: oPayload.kode_kunjungan,
-      no_sip:         oPayload.no_sip || null,
-      jenis_layanan:  oPayload.jenis_layanan,
-      nama_layanan:   oPayload.nama_layanan,
-      qty:            oPayload.qty || 1,
-      harga:          oPayload.harga,
-      keterangan:     oPayload.keterangan || null,
+    const getLocalDateStr = (d = new Date()) => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
     };
 
-    await DB("trx_layanan_medis").insert(oData);
+    let targetKodeTagihan = "";
+
+    await DB.transaction(async (trx) => {
+      // 1. Cek / buat trx_tagihan untuk kunjungan ini
+      let oTagihan = await trx("trx_tagihan")
+        .where("kode_kunjungan", oPayload.kode_kunjungan)
+        .first();
+
+      if (!oTagihan) {
+        // Ambil info kunjungan
+        const oKunjungan = await trx("trx_kunjungan")
+          .where("kode_kunjungan", oPayload.kode_kunjungan)
+          .first();
+
+        const countTagihan = await trx("trx_tagihan").count("id as c").first();
+        const seq          = String(parseInt(countTagihan.c || 0) + 1).padStart(4, "0");
+        const todayStr     = getLocalDateStr(new Date());
+        const dateTag      = todayStr.replace(/-/g, "");
+        const tagihanId    = `TGH${dateTag}${seq}`;
+        const kodeTagihan  = `TGH-${dateTag}-${seq}`;
+
+        oTagihan = {
+          id: tagihanId,
+          kode_tagihan: kodeTagihan,
+          kode_kunjungan: oPayload.kode_kunjungan,
+          no_rm: oKunjungan?.no_rm || null,
+          kode_penjamin: oKunjungan?.kode_penjamin || "PJM01",
+          total_tagihan: 0,
+          status_pembayaran: "belum_bayar",
+          tanggal: todayStr,
+        };
+
+        await trx("trx_tagihan").insert(oTagihan);
+      }
+
+      targetKodeTagihan = oTagihan.kode_tagihan;
+
+      // 2. Insert ke trx_detail_tagihan
+      const countDetail = await trx("trx_detail_tagihan").count("id as c").first();
+      const detailSeq   = String(parseInt(countDetail.c || 0) + 1).padStart(4, "0");
+      const todayStr    = getLocalDateStr(new Date());
+      const detailId    = `DTL${todayStr.replace(/-/g, "")}${detailSeq}`;
+
+      await trx("trx_detail_tagihan").insert({
+        id: detailId,
+        kode_tagihan: targetKodeTagihan,
+        jenis_item: oPayload.jenis_layanan,
+        nama_item: oPayload.nama_layanan,
+        qty: qty,
+        harga_satuan: hargaSatuan,
+        subtotal: subtotal,
+      });
+
+      // 3. Update total_tagihan di trx_tagihan
+      const sumRes = await trx("trx_detail_tagihan")
+        .where("kode_tagihan", targetKodeTagihan)
+        .sum("subtotal as total")
+        .first();
+
+      const newTotal = parseFloat(sumRes?.total || 0);
+
+      await trx("trx_tagihan")
+        .where("kode_tagihan", targetKodeTagihan)
+        .update({ total_tagihan: newTotal });
+    });
 
     return res.status(200).json({
       status: status.SUKSES,
       message: "Layanan medis berhasil ditambahkan",
       datetime: formatDateSystem(),
-      data: oData,
     });
   } catch (error) {
     const oResult = {

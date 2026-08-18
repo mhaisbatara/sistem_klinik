@@ -172,7 +172,6 @@ const DetailPanel = ({ state, setState }: ComponentProps) => {
                                 >
                                     <Column field="kode_permintaan"   header="Kode" />
                                     <Column field="jenis_pemeriksaan" header="Jenis Pemeriksaan" />
-                                    <Column field="tarif"             header="Tarif" body={(r: PermintaanLabItem) => formatRupiah(r.tarif)} />
                                     <Column field="tanggal_permintaan" header="Tanggal" body={(r) => r.tanggal_permintaan?.slice(0, 10)} />
                                     <Column field="status"            header="Status"
                                         body={(r: PermintaanLabItem) => (

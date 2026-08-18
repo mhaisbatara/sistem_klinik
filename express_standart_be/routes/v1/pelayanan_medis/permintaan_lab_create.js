@@ -1,7 +1,7 @@
 /**
  * @project Sistem Klinik
  * @file pelayanan_medis/permintaan_lab_create.js
- * @description Endpoint tambah permintaan lab
+ * @description Endpoint tambah permintaan lab (jenis_pemeriksaan diisi langsung oleh dokter)
  */
 
 import express from "express";
@@ -21,11 +21,14 @@ router.post("/", async (req, res) => {
   try {
     const cValidation = await validatePayload(
       {
-        kode_kunjungan:  Joi.string().required().label("Kode Kunjungan"),
-        kode_tarif:      Joi.string().required().label("Tarif Lab"),
-        no_sip:          Joi.string().allow("", null).optional().label("No. SIP Dokter"),
+        kode_kunjungan:    Joi.string().required().label("Kode Kunjungan"),
+        jenis_pemeriksaan: Joi.string().required().label("Jenis Pemeriksaan Lab"),
+        no_sip:            Joi.string().allow("", null).optional().label("No. SIP Dokter"),
       },
-      { "any.required": "{#label} wajib diisi" },
+      {
+        "any.required": "{#label} wajib diisi",
+        "string.empty": "{#label} tidak boleh kosong",
+      },
       oPayload,
       { allowUnknown: true }
     );
@@ -34,29 +37,6 @@ router.post("/", async (req, res) => {
       return res.status(422).json({
         status: status.BAD_REQUEST,
         message: cValidation,
-        datetime: formatDateSystem(),
-      });
-    }
-
-    // Ambil info tarif
-    const oTarif = await DB("mst_tarif_layanan").where("kode_tarif", oPayload.kode_tarif).first();
-    if (!oTarif) {
-      return res.status(404).json({
-        status: status.NOT_FOUND,
-        message: "Tarif lab tidak ditemukan",
-        datetime: formatDateSystem(),
-      });
-    }
-
-    // Cek apakah lab ini sudah diminta untuk kunjungan ini
-    const existing = await DB("trx_permintaan_lab")
-      .where({ kode_kunjungan: oPayload.kode_kunjungan, kode_tarif: oPayload.kode_tarif })
-      .first();
-
-    if (existing) {
-      return res.status(400).json({
-        status: status.GAGAL,
-        message: `Pemeriksaan "${oTarif.nama_layanan}" sudah ditambahkan untuk kunjungan ini`,
         datetime: formatDateSystem(),
       });
     }
@@ -72,12 +52,11 @@ router.post("/", async (req, res) => {
     const oData = {
       id,
       kode_permintaan,
-      kode_kunjungan:  oPayload.kode_kunjungan,
-      no_sip:          oPayload.no_sip || null,
-      jenis_pemeriksaan: oTarif.nama_layanan,
-      kode_tarif:      oPayload.kode_tarif,
+      kode_kunjungan:    oPayload.kode_kunjungan,
+      no_sip:            oPayload.no_sip || null,
+      jenis_pemeriksaan: oPayload.jenis_pemeriksaan,
       tanggal_permintaan: tanggal,
-      status:          "menunggu",
+      status:            "menunggu",
     };
 
     await DB("trx_permintaan_lab").insert(oData);
@@ -86,7 +65,7 @@ router.post("/", async (req, res) => {
       status: status.SUKSES,
       message: "Permintaan lab berhasil ditambahkan",
       datetime: formatDateSystem(),
-      data: { ...oData, tarif: oTarif.tarif, nama_tarif: oTarif.nama_layanan },
+      data: oData,
     });
   } catch (error) {
     const oResult = {

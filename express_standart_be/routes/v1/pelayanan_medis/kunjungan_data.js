@@ -96,7 +96,7 @@ router.post("/", async (req, res) => {
       "d.spesialisasi",
       "k.kode_penjamin",
       "pj.nama_penjamin",
-      "k.tanggal_kunjungan",
+      DB.raw("DATE_FORMAT(k.tanggal_kunjungan, '%Y-%m-%d') as tanggal_kunjungan"),
       "k.jam_masuk",
       "k.jam_selesai",
       "k.keluhan_awal",
@@ -105,7 +105,7 @@ router.post("/", async (req, res) => {
       "p.nik",
       "p.nama_pasien",
       "p.jenis_kelamin",
-      "p.tanggal_lahir",
+      DB.raw("DATE_FORMAT(p.tanggal_lahir, '%Y-%m-%d') as tanggal_lahir"),
       "p.no_hp",
     ];
 

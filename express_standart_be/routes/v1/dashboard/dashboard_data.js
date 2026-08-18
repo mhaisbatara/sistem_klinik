@@ -18,7 +18,14 @@ router.post("/", async (req, res) => {
   const username = req?.auth?.username || "";
 
   try {
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const getLocalDateStr = (d = new Date()) => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
+
+    const todayStr = getLocalDateStr(new Date());
 
     // 1. Kunjungan Hari Ini (count dari trx_antrian hari ini)
     const kunjunganTodayRes = await DB("trx_antrian")
@@ -81,7 +88,7 @@ router.post("/", async (req, res) => {
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().slice(0, 10);
+      const dateStr = getLocalDateStr(d);
       const dayName = dayNames[d.getDay()];
 
       const dayCountRes = await DB("trx_antrian")
