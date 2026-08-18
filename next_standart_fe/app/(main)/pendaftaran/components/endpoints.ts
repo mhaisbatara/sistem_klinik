@@ -1,0 +1,12 @@
+export const apiEndpointData         = '/pasien/pasien-data';
+export const apiEndpointSearch       = '/pasien/pasien-search';
+export const apiEndpointDaftarBaru   = '/pasien/pasien-daftar-baru';
+export const apiEndpointDaftarLama   = '/pasien/pasien-daftar-lama';
+export const apiEndpointAntrian      = '/master/antrian-awal-tersedia-daftar';
+export const apiEndpointDokter       = '/master/dokter-dropdown';
+export const apiEndpointPenjamin     = '/master/penjamin-dropdown';
+export const apiEndpointPoli         = '/master/poli-dropdown';
+export const apiEndpointProvinsi     = '/master/wilayah/provinsi';
+export const apiEndpointKabupaten    = '/master/wilayah/kabupaten';
+export const apiEndpointKecamatan    = '/master/wilayah/kecamatan';
+export const apiEndpointKelurahan    = '/master/wilayah/kelurahan';
