@@ -105,6 +105,55 @@ router.post("/", async (req, res) => {
           status_panggil: aksi,
         });
 
+      // --- SINKRONISASI KE trx_kunjungan ---
+      const existingKunjungan = await trx("trx_kunjungan")
+        .where("kode_antrian", record.id)
+        .first();
+
+      let targetStatusKunjungan = "menunggu";
+      if (aksi === "dipanggil") targetStatusKunjungan = "diperiksa";
+      else if (aksi === "selesai") targetStatusKunjungan = "selesai";
+      else if (aksi === "dilewati") targetStatusKunjungan = "batal";
+      else if (aksi === "menunggu") targetStatusKunjungan = "menunggu";
+
+      if (!existingKunjungan && (aksi === "dipanggil" || aksi === "selesai")) {
+        // Cari no_sip dokter dari mst_dokter jika kode_dokter diisi
+        let dokterSip = null;
+        if (record.kode_dokter) {
+          const dokter = await trx("mst_dokter").where("id", record.kode_dokter).first();
+          if (dokter) dokterSip = dokter.no_sip;
+        }
+
+        const dateTag = new Date().toISOString().slice(0, 10).replace(/-/g, "").slice(2);
+        const countKunj = await trx("trx_kunjungan").count("id as c").first();
+        const seqKunj   = String(parseInt(countKunj.c || 0) + 1).padStart(3, "0");
+        const kunjId    = `IDK${dateTag}${seqKunj}`;
+        const kodeKunj  = `KNJ${dateTag}${seqKunj}`;
+
+        await trx("trx_kunjungan").insert({
+          id: kunjId,
+          kode_kunjungan: kodeKunj,
+          kode_antrian: record.id,
+          no_rm: record.no_rm,
+          kode_poli: record.kode_poli,
+          no_sip: dokterSip,
+          kode_penjamin: record.kode_penjamin || null,
+          tanggal_kunjungan: record.tanggal,
+          jam_masuk: formatDateSystem(),
+          jam_selesai: aksi === "selesai" ? formatDateSystem() : null,
+          status_kunjungan: targetStatusKunjungan,
+          created_at: formatDateSystem(),
+        });
+      } else if (existingKunjungan) {
+        const updateData = { status_kunjungan: targetStatusKunjungan };
+        if (aksi === "selesai") {
+          updateData.jam_selesai = formatDateSystem();
+        }
+        await trx("trx_kunjungan")
+          .where("id", existingKunjungan.id)
+          .update(updateData);
+      }
+
       // Join data pasien untuk detail response
       updatedRecord = await trx("trx_antrian as a")
         .join("mst_pasien as p", "a.no_rm", "p.no_rm")

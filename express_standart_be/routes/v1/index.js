@@ -29,12 +29,21 @@ import DokterDropdown from "./master/dokter_dropdown.js";
 import PenjaminDropdown from "./master/penjamin_dropdown.js";
 import PoliDropdown from "./master/poli_dropdown.js";
 import Wilayah from "./master/wilayah.js";
+import PelayananMedis from "./pelayanan_medis/index.js";
+import Dashboard from "./dashboard/index.js";
 
 import {
   contextMiddleware,
   validateAccessToken,
 } from "../../middleware/validate_header.js";
 const router = express.Router();
+
+// Dashboard
+router.use(
+  "/dashboard",
+  [validateAccessToken, contextMiddleware],
+  Dashboard
+);
 
 //auth
 router.use("/auth/refresh-token", [], RefreshToken);
@@ -91,6 +100,13 @@ router.use(
   "/antrian",
   [validateAccessToken, contextMiddleware],
   Antrian
+);
+
+// Pelayanan Medis
+router.use(
+  "/pelayanan-medis",
+  [validateAccessToken, contextMiddleware],
+  PelayananMedis
 );
 
 export default router;

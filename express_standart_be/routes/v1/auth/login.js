@@ -122,7 +122,7 @@ router.post("/", async (req, res) => {
         .where("user_code", oUser.user_code)
         .first();
 
-      if (!oNavigation && !oNavigation?.menu) {
+      if (!oNavigation || !oNavigation?.menu) {
         return res.status(400).json({
           status: status.GAGAL,
           message: "User tidak memiliki credential terdaftar di database",
