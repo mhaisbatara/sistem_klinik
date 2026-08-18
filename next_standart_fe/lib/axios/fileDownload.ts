@@ -19,11 +19,15 @@ import axios from 'axios';
 import { logout } from '../tools/serverTools';
 import { signOut } from "next-auth/react";
 
+const rawDownloadPath = process.env.NEXT_PUBLIC_API_DIR_DOWNLOAD_PATH || '/api/interceptor_download';
+const resolvedDownloadURL = typeof window !== 'undefined' && rawDownloadPath.startsWith('/')
+    ? `${window.location.origin}${rawDownloadPath}`
+    : rawDownloadPath;
+
 const Axios = axios.create({
-    baseURL: process.env.NEXT_PUBLIC_API_DIR_DOWNLOAD_PATH,
+    baseURL: resolvedDownloadURL,
     headers: {
         'Content-Type': 'application/json',
-
     },
     withCredentials: true,
 });

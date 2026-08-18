@@ -18,8 +18,15 @@ import axios from 'axios';
 import { logout } from '../tools/serverTools';
 import { signOut } from "next-auth/react";
 
+// Resolve baseURL: jika relatif (mulai '/'), gabungkan dengan window.location.origin
+// agar tidak terkena CORS apapun port yang digunakan.
+const rawApiPath = process.env.NEXT_PUBLIC_API_DIR_PATH || '/api/interceptor';
+const resolvedBaseURL = typeof window !== 'undefined' && rawApiPath.startsWith('/')
+    ? `${window.location.origin}${rawApiPath}`
+    : rawApiPath;
+
 const Axios = axios.create({
-    baseURL: process.env.NEXT_PUBLIC_API_DIR_PATH,
+    baseURL: resolvedBaseURL,
     headers: {
         'Content-Type': 'application/json',
     },

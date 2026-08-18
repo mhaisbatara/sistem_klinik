@@ -66,8 +66,13 @@ export const POST = async (req: NextRequest) => {
             'X-Timestamp': formatDateISO(new Date()),
         };
 
+        const baseApi = (process.env.API_URL || 'http://localhost:8000').replace(/\/+$/, '');
+        const loginUrl = baseApi.endsWith('/api/v1')
+            ? `${baseApi}/auth/login`
+            : `${baseApi}/api/v1/auth/login`;
+
         const result = await axios.post<AuthResponse & User>(
-            `${process.env.API_URL}/auth/login`,
+            loginUrl,
             credential,
             { headers }
         );

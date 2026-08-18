@@ -59,33 +59,37 @@ export default logout;
 const routeMiddleware = async (searchUrl: string) => {
     const session = await auth();
 
-    // console.log('ini ses', session)
-
     if (!session?.user) {
         return '99';
     }
 
-    const dSessionExp = parse(session?.expires, 'yyyy-MM-dd HH:mm:ss', new Date());
-    const dNow = new Date();
+    if (session.expires) {
+        const dSessionExp = new Date(session.expires);
+        const dNow = new Date();
 
-    if ((dNow.getTime() > dSessionExp.getTime())) {
-        return '99'
+        if (!isNaN(dSessionExp.getTime()) && (dNow.getTime() > dSessionExp.getTime())) {
+            return '99';
+        }
     }
 
     if (session.user.user_code) {
         try {
+            const baseApi = (process.env.API_URL || 'http://localhost:8000').replace(/\/+$/, '');
+            const url = baseApi.endsWith('/api/v1') ? `${baseApi}/setup/nav/user-data` : `${baseApi}/api/v1/setup/nav/user-data`;
+
             const resp = await axios.post(
-                `${process.env.NEXT_PUBLIC_API_DIR_PATH}`,
-                { user_code: session?.user?.user_code },
+                url,
+                { user_code: session.user.user_code },
                 {
                     headers: {
-                        'X-ENDPOINT': "/setup/nav/user-data",
-                        'X-Level': "1",
+                        'Content-Type': 'application/json',
+                        'X-Timestamp': formatDateISO(new Date()),
+                        'Authorization': `Bearer ${session.access_token}`
                     }
                 }
             );
 
-            const menu = resp.data.data;
+            const menu = resp.data?.data;
 
             let urlFix = searchUrl;
             if (searchUrl.length > 1) {
@@ -95,13 +99,13 @@ const routeMiddleware = async (searchUrl: string) => {
             const res = findToValuesRecursive(menu, urlFix);
 
             if (res.length < 1) {
-                return '98'
+                return '98';
             }
         } catch (error: any) {
-            if (error?.response?.status == '401') {
-                return '99'
+            if (error?.response?.status === 401) {
+                return '99';
             }
-            console.log(error);
+            console.error("routeMiddleware navigation check error:", error?.message);
         }
     } else {
         return '99';
@@ -121,8 +125,11 @@ const refreshToken = async (userCode: string, refreshToken: string, rememberMe: 
 
     const encryptedBody = credentialPayload;
 
+    const baseApi = (process.env.API_URL || 'http://localhost:8000').replace(/\/+$/, '');
+    const url = baseApi.endsWith('/api/v1') ? `${baseApi}/auth/refresh-token` : `${baseApi}/api/v1/auth/refresh-token`;
+
     const refreshResponse = await axios.post(
-        `${process.env.API_URL}/api/v1/auth/refresh-token`,
+        url,
         encryptedBody,
         {
             headers: {

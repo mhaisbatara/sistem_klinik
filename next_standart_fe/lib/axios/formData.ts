@@ -18,8 +18,13 @@ import axios from 'axios';
 import { logout } from '../tools/serverTools';
 import { signOut } from "next-auth/react";
 
+const rawFormPath = process.env.NEXT_PUBLIC_API_DIR_FORMDATA_PATH || '/api/interceptor_formdata';
+const resolvedFormURL = typeof window !== 'undefined' && rawFormPath.startsWith('/')
+    ? `${window.location.origin}${rawFormPath}`
+    : rawFormPath;
+
 const Axios = axios.create({
-    baseURL: process.env.NEXT_PUBLIC_API_DIR_FORMDATA_PATH,
+    baseURL: resolvedFormURL,
     withCredentials: true,
 });
 

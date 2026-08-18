@@ -77,7 +77,7 @@ const authOptions: NextAuthConfig = {
                     const refreshedTokens = await refreshToken(
                         token.user_code || token.id || '',
                         token.refresh_token || '',
-                        token.remember_me ? 'true' : 'false'
+                        token.remember_me ? '1' : '0'
                     );
 
                     // Perbarui token di dalam cookie NextAuth
