@@ -31,6 +31,8 @@ import PoliDropdown from "./master/poli_dropdown.js";
 import Wilayah from "./master/wilayah.js";
 import PelayananMedis from "./pelayanan_medis/index.js";
 import Dashboard from "./dashboard/index.js";
+import Kasir    from "./kasir/index.js";
+import Keuangan from "./keuangan/index.js";
 
 import {
   contextMiddleware,
@@ -107,6 +109,20 @@ router.use(
   "/pelayanan-medis",
   [validateAccessToken, contextMiddleware],
   PelayananMedis
+);
+
+// Kasir
+router.use(
+  "/kasir",
+  [validateAccessToken, contextMiddleware],
+  Kasir
+);
+
+// Keuangan
+router.use(
+  "/keuangan",
+  [validateAccessToken, contextMiddleware],
+  Keuangan
 );
 
 export default router;

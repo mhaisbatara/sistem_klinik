@@ -96,8 +96,15 @@ async function postCRUD(request: NextRequest, accessToken: string) {
 
 
         delete requestHeaders['X-Level'];
+
+        const baseApi = (process.env.API_URL || 'http://localhost:8000').replace(/\/+$/, '');
+        const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+        const url = baseApi.endsWith('/api/v1')
+            ? `${baseApi}${cleanEndpoint}`
+            : `${baseApi}/api/v1${cleanEndpoint}`;
+
         const result = await axios.post(
-            `${process.env.API_URL}${endpoint}`,
+            url,
             body,
             { headers: requestHeaders }
         );

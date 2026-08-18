@@ -37,20 +37,13 @@ router.post("/", async (req, res) => {
 
         if (!vaData || vaData.length < 1) {
             const oResult = {
-                status: status.GAGAL,
+                status: status.SUKSES,
                 message: "DATA TIDAK DITEMUKAN",
                 datetime: formatDateSystem(),
-                data: [],
+                data: {},
             };
-            Logging(null, {
-                file: "config_data.js",
-                func: "data",
-                request: oPayload,
-                response: oResult,
-                user: username,
-            });
 
-            return res.status(400).json(oResult);
+            return res.status(200).json(oResult);
         }
 
         const oFormatted = {};

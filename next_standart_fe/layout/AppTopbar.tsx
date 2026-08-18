@@ -26,7 +26,7 @@ const AppTopbar = forwardRef<AppTopbarRef>((props, ref) => {
     }, [session]);
 
     const handleLogout = () => {
-        signOut()
+        signOut({ callbackUrl: '/auth/login' })
     }
 
     return (
