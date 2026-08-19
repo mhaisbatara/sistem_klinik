@@ -2,6 +2,7 @@
 
 import postData from '@/lib/axios/postData';
 import { Toast } from 'primereact/toast';
+import { Button } from 'primereact/button';
 import { useEffect, useRef, useState } from 'react';
 import { showError } from '@/lib/tools/generalTools';
 import { useFormik } from 'formik';
@@ -282,7 +283,7 @@ const Page = () => {
                         <i className="pi pi-ticket text-blue-600 text-3xl" />
                         Antrian Poli &amp; Master Poliklinik
                     </h2>
-                    <p className="text-color-secondary">
+                    <p className="text-color-secondary mb-0">
                         Kelola dan panggil pasien sesuai antrian poliklinik serta atur data master Poliklinik.
                     </p>
                 </div>

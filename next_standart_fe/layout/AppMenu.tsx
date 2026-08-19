@@ -47,8 +47,45 @@ const AppMenu = () => {
                 throw new Error('Invalid menu data');
             }
 
-            const menu: AppMenuItem[] = JSON.parse(JSON.stringify(vaData.data));
-            const menu2: AppMenuItem[] = JSON.parse(JSON.stringify(vaData.data));
+            let menu: AppMenuItem[] = JSON.parse(JSON.stringify(vaData.data));
+
+            // Pastikan hanya ada 1 item menu Display TV Antrian Poli di sidebar
+            let foundTv = false;
+            const updateTvPath = (items: AppMenuItem[]) => {
+                for (const item of items) {
+                    if (item.label && item.label.toLowerCase().includes('display tv')) {
+                        item.to = '/antrian-tv';
+                        item.label = 'Display TV Antrian Poli';
+                        foundTv = true;
+                        return;
+                    }
+                    if (item.items && item.items.length > 0) {
+                        updateTvPath(item.items);
+                        if (foundTv) return;
+                    }
+                }
+            };
+            updateTvPath(menu);
+
+            if (!foundTv && !JSON.stringify(menu).includes('/antrian-tv')) {
+                const tvItem: AppMenuItem = {
+                    label: 'Display TV Antrian Poli',
+                    icon: 'pi pi-fw pi-desktop',
+                    to: '/antrian-tv',
+                };
+                const parentGroup = menu.find(
+                    (m) => m.label?.toLowerCase().includes('antrian') || m.label?.toLowerCase().includes('pelayanan')
+                );
+                if (parentGroup && parentGroup.items) {
+                    parentGroup.items.push(tvItem);
+                } else if (menu.length > 0 && menu[0].items) {
+                    menu[0].items.push(tvItem);
+                } else {
+                    menu.push(tvItem);
+                }
+            }
+
+            const menu2: AppMenuItem[] = JSON.parse(JSON.stringify(menu));
 
             setState(prev => ({
                 ...prev,

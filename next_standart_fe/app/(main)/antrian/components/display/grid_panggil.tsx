@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from 'primereact/button';
 import { Tag } from 'primereact/tag';
 import { Dropdown } from 'primereact/dropdown';
@@ -98,6 +99,7 @@ const getStatusIcon = (s: string) => {
 };
 
 const GridPanggil = ({ state, setState, toast, getGridData }: ComponentProps) => {
+    const router                          = useRouter();
     const [loadAction, setLoadAction]     = useState<string | null>(null);
     const [countdown, setCountdown]       = useState(AUTO_REFRESH_SECONDS);
     const [callHistory, setCallHistory]   = useState<AntrianItem[]>([]);
@@ -316,12 +318,12 @@ const GridPanggil = ({ state, setState, toast, getGridData }: ComponentProps) =>
                                     onClick={() => handleAksi(currentlyCalling, 'dipanggil')}
                                 />
                                 <Button
-                                    label="Selesai"
-                                    icon="pi pi-check-circle"
-                                    severity="success"
+                                    label="Periksa"
+                                    icon="pi pi-stethoscope"
+                                    severity="warning"
                                     size="large"
-                                    loading={loadAction === currentlyCalling.id}
-                                    onClick={() => handleAksi(currentlyCalling, 'selesai')}
+                                    onClick={() => router.push('/pemeriksaan-dokter')}
+                                    tooltip="Arahkan ke Pemeriksaan Dokter"
                                 />
                                 <Button
                                     label="Lewati"
@@ -474,9 +476,10 @@ const GridPanggil = ({ state, setState, toast, getGridData }: ComponentProps) =>
                                                     <Button label="Ulang" icon="pi pi-volume-up" severity="info"
                                                         size="small" className="w-full" loading={loadAction === item.id}
                                                         onClick={() => handleAksi(item, 'dipanggil')} />
-                                                    <Button label="Selesai" icon="pi pi-check" severity="success"
-                                                        size="small" className="w-full" loading={loadAction === item.id}
-                                                        onClick={() => handleAksi(item, 'selesai')} />
+                                                    <Button label="Periksa" icon="pi pi-stethoscope" severity="warning"
+                                                        size="small" className="w-full"
+                                                        onClick={() => router.push('/pemeriksaan-dokter')}
+                                                        tooltip="Arahkan ke Pemeriksaan Dokter" />
                                                 </>
                                             )}
                                             {item.status_panggil === 'dilewati' && (

@@ -35,7 +35,9 @@ router.post("/", async (req, res) => {
       .join("mst_pasien as p", "a.no_rm", "p.no_rm")
       .leftJoin("mst_poli as pol", "a.kode_poli", "pol.kode_poli")
       .leftJoin("mst_penjamin as pj", "a.kode_penjamin", "pj.kode_penjamin")
-      .leftJoin("mst_dokter as d", "a.kode_dokter", "d.id")
+      .leftJoin("mst_dokter as d", function() {
+        this.on(DB.raw("CAST(a.kode_dokter AS CHAR)"), "=", DB.raw("CAST(d.id AS CHAR)"));
+      })
       .modify((qb) => {
         if (kodePoli) {
           qb.where("a.kode_poli", kodePoli);

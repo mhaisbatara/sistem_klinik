@@ -10,6 +10,7 @@ import { useState, useCallback, useRef } from 'react';
 import postData from '@/lib/axios/postData';
 import { showError } from '@/lib/tools/generalTools';
 import { getTzUser } from '@/lib/tools/dateTools';
+import { printAntrianTicket, TicketData } from '@/lib/tools/printTicket';
 import {
     FormLama, FormLamaProps, PasienResult,
 } from '../interfaces';
@@ -36,9 +37,7 @@ const INIT: FormLamaExt = {
 const FormLamaComponent = ({ state, setState, toast }: FormLamaProps) => {
     const [loadSubmit, setLoadSubmit] = useState(false);
     const [showResult, setShowResult] = useState(false);
-    const [resultData, setResultData] = useState<{
-        no_rm: string; nama_pasien: string; id: string; no_antrian: string; nama_poli: string;
-    } | null>(null);
+    const [resultData, setResultData] = useState<(TicketData & { id?: string }) | null>(null);
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const selected = state.selectedPasien;
@@ -71,12 +70,16 @@ const FormLamaComponent = ({ state, setState, toast }: FormLamaProps) => {
                 };
                 const res = await postData(apiEndpointDaftarLama, body, { 'X-Level': '1' });
                 const data = res.data?.data;
+                const selPenjamin = state.penjaminOptions.find((p) => p.kode_penjamin === values.kode_penjamin);
+                const selDokter   = state.dokterOptions.find((d) => d.id === values.kode_dokter);
                 setResultData({
-                    id:          data?.id,
-                    no_rm:       data?.no_rm,
-                    nama_pasien: data?.nama_pasien,
-                    no_antrian:  data?.no_antrian,
-                    nama_poli:   data?.nama_poli,
+                    id:            data?.id,
+                    no_rm:         data?.no_rm,
+                    nama_pasien:   data?.nama_pasien,
+                    no_antrian:    data?.no_antrian,
+                    nama_poli:     data?.nama_poli,
+                    nama_penjamin: selPenjamin ? selPenjamin.nama_penjamin : undefined,
+                    nama_dokter:   selDokter ? selDokter.nama_dokter : undefined,
                 });
                 setShowResult(true);
                 formik.resetForm();
@@ -158,8 +161,23 @@ const FormLamaComponent = ({ state, setState, toast }: FormLamaProps) => {
                 header="✅ Kunjungan Berhasil Didaftarkan"
                 visible={showResult}
                 onHide={() => setShowResult(false)}
-                modal style={{ width: '420px' }}
-                footer={<Button label="Tutup" icon="pi pi-times" onClick={() => setShowResult(false)} />}
+                modal style={{ width: '440px' }}
+                footer={
+                    <div className="flex justify-content-between gap-2 w-full">
+                        <Button
+                            label="Cetak Nomor Antrian"
+                            icon="pi pi-print"
+                            onClick={() => printAntrianTicket(resultData)}
+                        />
+                        <Button
+                            label="Tutup"
+                            icon="pi pi-times"
+                            severity="secondary"
+                            outlined
+                            onClick={() => setShowResult(false)}
+                        />
+                    </div>
+                }
             >
                 <div className="flex flex-column align-items-center text-center gap-3 py-3">
                     <i className="pi pi-check-circle text-green-500 text-6xl" />
@@ -173,6 +191,14 @@ const FormLamaComponent = ({ state, setState, toast }: FormLamaProps) => {
                             <span className="font-bold text-blue-600 text-3xl">{resultData?.no_antrian}</span>
                             <span className="text-sm font-medium text-color-secondary">{resultData?.nama_poli}</span>
                         </div>
+
+                        <Button
+                            label="Cetak Struk Antrian"
+                            icon="pi pi-print"
+                            severity="success"
+                            className="mt-3 w-full"
+                            onClick={() => printAntrianTicket(resultData)}
+                        />
 
                         <p className="text-sm text-color-secondary mt-3">ID Pendaftaran: {resultData?.id}</p>
                     </div>

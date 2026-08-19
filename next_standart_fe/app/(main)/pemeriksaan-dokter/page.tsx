@@ -38,6 +38,9 @@ const Page = () => {
         showPemeriksaan: false,
         activeKunjungan: null,
 
+        vitals: null,
+        loadVitals: false,
+
         vaLayanan: [],
         loadLayanan: false,
 
